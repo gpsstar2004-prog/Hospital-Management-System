@@ -1,0 +1,70 @@
+/* The page title already comes from the shared header, so the old hero is hidden */
+.billing-hero{display:none}
+.billing-alert{display:flex;align-items:center;gap:12px;margin:0 0 32px;padding:16px 20px;border-radius:18px;font-size:15px;border:1px solid}
+.billing-alert-error{color:#ffb8b0;border-color:rgba(255,122,110,.4);background:rgba(255,122,110,.08)}
+.billing-alert-success{color:#9af0c3;border-color:rgba(53,224,138,.4);background:rgba(53,224,138,.08)}
+
+.billing-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin:0 0 72px;border-bottom:1px solid var(--line)}
+.billing-stat-card{display:block;min-width:0;padding:40px 24px 44px;border-left:1px solid var(--line)}
+.billing-stat-card:first-child{border-left:0;padding-left:0}
+.billing-stat-icon{display:none}
+.billing-stat-content{display:grid;gap:14px}
+.billing-stat-content>span{color:var(--muted);font-size:15px}
+.billing-stat-content strong{font-size:clamp(30px,3.4vw,54px);font-weight:300;letter-spacing:-.04em;line-height:1;overflow-wrap:anywhere}
+.billing-stat-content small{color:var(--faint);font-size:13px}
+
+.billing-toolbar{display:flex;flex-wrap:wrap;gap:12px;align-items:center;margin-bottom:40px}
+.billing-search{display:flex;align-items:center;gap:12px;flex:1;min-width:240px;max-width:420px;height:50px;padding:0 20px;border:1px solid var(--line2);border-radius:999px;color:var(--muted)}
+.billing-search:focus-within{border-color:#fff;color:#fff}
+.billing-search input{flex:1;min-width:0;outline:0;font-size:15px}
+.billing-search input::placeholder{color:var(--faint)}
+.billing-status-filter{position:relative;display:block}
+.billing-status-filter select{width:auto;height:50px;padding:0 46px 0 22px;border-radius:999px;appearance:none;-webkit-appearance:none;font-size:15px;cursor:pointer}
+.billing-status-filter svg{position:absolute;right:18px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--muted)}
+.billing-refresh-button{display:inline-flex;align-items:center;gap:10px;height:50px;padding:0 24px;border:1px solid var(--line2);border-radius:999px;background:transparent;font-size:15px;font-weight:500}
+.billing-refresh-button:hover:not(:disabled){background:rgba(255,255,255,.08)}
+.billing-refresh-button:disabled{opacity:.5;cursor:wait}
+.billing-spinning{animation:billing-spin 1s linear infinite}
+@keyframes billing-spin{to{transform:rotate(360deg)}}
+
+.billing-section-heading{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;padding-bottom:24px;flex-wrap:wrap}
+.billing-section-title{display:flex;align-items:center;gap:14px}
+.billing-section-title svg{display:none}
+.billing-record-count{border:1px solid var(--line2);border-radius:999px;padding:3px 12px;font-size:13px;color:var(--muted)}
+.billing-section-caption{color:var(--muted);font-size:15px}
+
+.billing-table-scroll{margin:0 calc(var(--bleed)*-1);overflow-x:auto}
+.billing-table{width:100%;border-collapse:collapse;white-space:nowrap}
+.billing-id{font-size:17px;font-weight:500;color:#fff}
+.billing-appointment{display:grid;gap:4px}
+.billing-appointment span{display:flex;align-items:center;gap:6px;color:var(--faint);font-size:13px}
+.billing-patient{display:flex;align-items:center;gap:12px;color:#fff}
+.billing-patient-avatar{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.1);font-size:14px}
+.billing-total{font-size:17px;color:#fff;font-weight:500}
+.billing-status-badge{display:inline-flex;align-items:center;gap:6px;border:1px solid currentColor;border-radius:999px;padding:5px 13px;font-size:13px;text-transform:lowercase}
+.billing-status-badge::first-letter{text-transform:uppercase}
+.badge-paid{color:var(--green)}
+.badge-pending{color:var(--amber)}
+.billing-pay-button{display:inline-flex;align-items:center;gap:8px;border:0;border-radius:999px;background:#fff;color:var(--ink);padding:9px 18px;font-size:14px;font-weight:500}
+.billing-pay-button:hover:not(:disabled){background:#dfe6ff}
+.billing-pay-button:disabled{opacity:.5;cursor:wait}
+.billing-paid-action{display:inline-flex;align-items:center;gap:8px;color:var(--green);font-size:14px}
+tbody tr:hover .billing-id,tbody tr:hover .billing-appointment span,tbody tr:hover .billing-total{color:#fff}
+
+.billing-empty-state{display:grid;justify-items:center;gap:8px;padding:64px 20px;color:var(--muted);text-align:center;white-space:normal}
+.billing-empty-icon{display:grid;place-items:center;width:64px;height:64px;border:1px solid var(--line2);border-radius:50%;margin-bottom:8px}
+.billing-empty-state strong{font-size:22px;font-weight:400;color:#fff}
+.billing-loading{padding:48px 20px;text-align:center;color:var(--muted)}
+.billing-table-footer{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:24px 0;color:var(--muted);font-size:14px}
+.billing-footer-total{display:inline-flex;align-items:center;gap:6px}
+.billing-disclaimer{display:flex;align-items:flex-start;gap:14px;max-width:70ch;padding-top:8px;color:var(--faint);font-size:14px;line-height:1.5}
+.billing-info-icon{display:grid;place-items:center;flex-shrink:0;width:22px;height:22px;border:1px solid var(--line2);border-radius:50%;font-size:12px}
+
+@media (max-width:1180px){
+  .billing-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .billing-stat-card:nth-child(odd){border-left:0;padding-left:0}
+}
+@media (max-width:650px){
+  .billing-stat-card{padding:28px 16px 32px}
+  .billing-search{max-width:none}
+}
