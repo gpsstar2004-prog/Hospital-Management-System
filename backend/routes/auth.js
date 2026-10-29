@@ -46,25 +46,34 @@ router.post("/register", async (req, res) => {
 
         const passwordHash = await bcrypt.hash(password, 12);
 
-        const user = await prisma.user.create({
-            data: {
-                fullName: fullName.trim(),
-                email: normalizedEmail,
-                passwordHash,
-                roleId: role.roleId
-            },
-            select: {
-                userId: true,
-                fullName: true,
-                email: true,
-                role: {
-                    select: { roleName: true }
+        const user = await prisma.$transaction(async (tx) => {
+            const createdUser = await tx.user.create({
+                data: {
+                    fullName: fullName.trim(),
+                    email: normalizedEmail,
+                    passwordHash,
+                    roleId: role.roleId
+                },
+                select: {
+                    userId: true,
+                    fullName: true,
+                    email: true,
+                    role: { select: { roleName: true } }
                 }
-            }
+            });
+
+            await tx.patient.create({
+                data: {
+                    userId: createdUser.userId,
+                    name: fullName.trim()
+                }
+            });
+
+            return createdUser;
         });
 
         return res.status(201).json({
-            message: "Registration successful",
+            message: "Registration successful. You can now sign in.",
             user
         });
     } catch (error) {

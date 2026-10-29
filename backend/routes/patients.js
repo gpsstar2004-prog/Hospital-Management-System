@@ -1,4 +1,3 @@
-
 const express = require("express");
 const prisma = require("../lib/prisma");
 const {
@@ -181,6 +180,67 @@ router.get(
 
             return res.status(500).json({
                 message: "Unable to fetch patients"
+            });
+        }
+    }
+);
+
+router.post(
+    "/staff-create",
+    authenticateToken,
+    authorizeRoles("ADMIN", "RECEPTIONIST"),
+    async (req, res) => {
+        try {
+            const {
+                name,
+                dob,
+                gender,
+                phone,
+                bloodGroup,
+                address
+            } = req.body;
+
+            if (typeof name !== "string" || !name.trim()) {
+                return res.status(400).json({
+                    message: "Patient name is required"
+                });
+            }
+
+            let parsedDob = null;
+            if (dob) {
+                parsedDob = new Date(dob);
+                if (Number.isNaN(parsedDob.getTime())) {
+                    return res.status(400).json({
+                        message: "Enter a valid date of birth"
+                    });
+                }
+                if (parsedDob > new Date()) {
+                    return res.status(400).json({
+                        message: "Date of birth cannot be in the future"
+                    });
+                }
+            }
+
+            const patient = await prisma.patient.create({
+                data: {
+                    name: name.trim(),
+                    dob: parsedDob,
+                    gender: gender || null,
+                    phone: phone || null,
+                    bloodGroup: bloodGroup || null,
+                    address: address || null
+                }
+            });
+
+            return res.status(201).json({
+                message: "Patient added successfully",
+                patient
+            });
+        } catch (error) {
+            console.error("Staff patient creation error:", error);
+
+            return res.status(500).json({
+                message: "Unable to add patient"
             });
         }
     }

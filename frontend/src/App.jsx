@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Billing from "./Billing";
 
 import api from "./api";
@@ -45,6 +45,7 @@ const menuItems = [
 
 function App() {
   const [activePage, setActivePage] = useState("Dashboard");
+  const pageHistory = useRef(["Dashboard"]);
   const [search, setSearch] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [session, setSession] = useState(() => {
@@ -63,6 +64,18 @@ function App() {
   });
 
   const [patients, setPatients] = useState([]);
+  const [showPatientForm, setShowPatientForm] = useState(false);
+  const [patientSaving, setPatientSaving] = useState(false);
+  const [patientMessage, setPatientMessage] = useState("");
+  const [patientError, setPatientError] = useState("");
+  const [patientForm, setPatientForm] = useState({
+    name: "",
+    dob: "",
+    gender: "",
+    phone: "",
+    bloodGroup: "",
+    address: ""
+  });
   const [appointmentsData, setAppointmentsData] = useState([]);
   const [doctorsData, setDoctorsData] = useState([]);
   const [billsData, setBillsData] = useState([]);
@@ -72,6 +85,35 @@ function App() {
 
   const user = session?.user;
   const role = user?.role || "";
+
+  function navigateToPage(page) {
+    if (!page || page === activePage) {
+      setSidebarOpen(false);
+      return;
+    }
+    pageHistory.current.push(page);
+    window.history.pushState({ hmsPage: page }, "", window.location.href);
+    setActivePage(page);
+    setShowAppointmentForm(false);
+    setSidebarOpen(false);
+  }
+
+  useEffect(() => {
+    if (!session) return undefined;
+    window.history.pushState({ hmsPage: activePage || "Dashboard" }, "", window.location.href);
+    const handleBrowserBack = () => {
+      if (pageHistory.current.length > 1) {
+        pageHistory.current.pop();
+        const previousPage = pageHistory.current[pageHistory.current.length - 1] || "Dashboard";
+        setActivePage(previousPage);
+        setShowAppointmentForm(false);
+        setSidebarOpen(false);
+      }
+      window.history.pushState({ hmsPage: pageHistory.current[pageHistory.current.length - 1] || "Dashboard" }, "", window.location.href);
+    };
+    window.addEventListener("popstate", handleBrowserBack);
+    return () => window.removeEventListener("popstate", handleBrowserBack);
+  }, [session]);
 
   useEffect(() => {
     if (!session) return;
@@ -169,8 +211,45 @@ function App() {
     setAppointmentsData([]);
     setDoctorsData([]);
     setBillsData([]);
+    pageHistory.current = ["Dashboard"];
     setActivePage("Dashboard");
     setSearch("");
+  }
+
+  async function handleAddPatient(event) {
+    event.preventDefault();
+    setPatientError("");
+    setPatientMessage("");
+
+    if (!patientForm.name.trim()) {
+      setPatientError("Patient name is required.");
+      return;
+    }
+
+    setPatientSaving(true);
+    try {
+      await api.post("/patients/staff-create", {
+        ...patientForm,
+        name: patientForm.name.trim(),
+        dob: patientForm.dob || null,
+        gender: patientForm.gender || null,
+        phone: patientForm.phone.trim() || null,
+        bloodGroup: patientForm.bloodGroup || null,
+        address: patientForm.address.trim() || null
+      });
+
+      const response = await api.get("/patients");
+      const data = Array.isArray(response.data) ? response.data : response.data?.patients || response.data?.data || [];
+      setPatients(data);
+      setPatientForm({ name: "", dob: "", gender: "", phone: "", bloodGroup: "", address: "" });
+      setShowPatientForm(false);
+      setPatientMessage("Patient added successfully.");
+      setDataError("");
+    } catch (error) {
+      setPatientError(error.response?.data?.message || "Unable to add patient. Check your permissions and backend.");
+    } finally {
+      setPatientSaving(false);
+    }
   }
 
   if (!session) {
@@ -266,7 +345,7 @@ function App() {
               <button
                 key={label}
                 className={`nav-item ${activePage === label ? "active" : ""}`}
-                onClick={() => { setActivePage(label); setShowAppointmentForm(false); setSidebarOpen(false); }}
+                onClick={() => navigateToPage(label)}
               >
                 <i className="nav-dot" />
                 <span>{label}</span>
@@ -279,7 +358,7 @@ function App() {
             className="notification icon-button"
             aria-label="Notifications"
             title="View appointments"
-            onClick={() => setActivePage("Appointments")}
+            onClick={() => navigateToPage("Appointments")}
           >
             <Bell size={19} />
             <i />
@@ -289,7 +368,7 @@ function App() {
             className="avatar admin-avatar"
             aria-label="Open account settings"
             title="Account settings"
-            onClick={() => setActivePage("Settings")}
+            onClick={() => navigateToPage("Settings")}
           >
             {initials || "U"}
           </button>
@@ -421,7 +500,7 @@ function App() {
 
                     <button
                       className="text-button"
-                      onClick={() => setActivePage("Appointments")}
+                      onClick={() => navigateToPage("Appointments")}
                     >
                       View all →
                     </button>
@@ -581,38 +660,125 @@ function App() {
               </div>
 
               {activePage === "Patients" && isStaff && (
-                <div className="table-wrapper">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>ID</th>
-                        <th>Patient</th>
-                        <th>Gender</th>
-                        <th>Phone</th>
-                        <th>Blood Group</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {dataLoading && (
-                        <tr><td colSpan="5">Loading patients...</td></tr>
-                      )}
+                <>
+                  <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, padding: "0 20px 20px", flexWrap: "wrap" }}>
+                    <button
+                      type="button"
+                      className="secondary-button"
+                      disabled={dataLoading}
+                      onClick={async () => {
+                        setDataError("");
+                        try {
+                          const response = await api.get("/patients");
+                          const data = Array.isArray(response.data) ? response.data : response.data?.patients || response.data?.data || [];
+                          setPatients(data);
+                        } catch (error) {
+                          setDataError(error.response?.data?.message || "Unable to refresh patients.");
+                        }
+                      }}
+                    >
+                      <RefreshCw size={16} /> Refresh
+                    </button>
+                    {["ADMIN", "RECEPTIONIST"].includes(role) && (
+                      <button
+                        type="button"
+                        className="primary-button"
+                        onClick={() => {
+                          setShowPatientForm((visible) => !visible);
+                          setPatientError("");
+                          setPatientMessage("");
+                        }}
+                      >
+                        <Plus size={16} /> {showPatientForm ? "Close Form" : "Add Patient"}
+                      </button>
+                    )}
+                  </div>
 
-                      {!dataLoading && patients.map((patient) => (
-                        <tr key={patient.patientId}>
-                          <td>{patient.patientId}</td>
-                          <td><strong>{patient.name}</strong></td>
-                          <td>{patient.gender || "—"}</td>
-                          <td>{patient.phone || "—"}</td>
-                          <td>{patient.bloodGroup || "—"}</td>
+                  {patientError && <div className="dashboard-error" role="alert" style={{ margin: "0 20px 16px" }}>{patientError}</div>}
+                  {patientMessage && <p role="status" style={{ margin: "0 20px 16px", color: "#059669" }}>{patientMessage}</p>}
+
+                  {showPatientForm && ["ADMIN", "RECEPTIONIST"].includes(role) && (
+                    <form
+                      onSubmit={handleAddPatient}
+                      style={{
+                        padding: 20,
+                        margin: "0 20px 24px",
+                        border: "1px solid var(--border-color, #333)",
+                        borderRadius: 12,
+                        display: "grid",
+                        gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                        gap: 16
+                      }}
+                    >
+                      <label style={{ display: "grid", gap: 6 }}>
+                        Full name *
+                        <input value={patientForm.name} onChange={(event) => setPatientForm({ ...patientForm, name: event.target.value })} maxLength={100} required placeholder="Patient full name" />
+                      </label>
+                      <label style={{ display: "grid", gap: 6 }}>
+                        Date of birth
+                        <input type="date" value={patientForm.dob} max={new Date().toISOString().slice(0, 10)} onChange={(event) => setPatientForm({ ...patientForm, dob: event.target.value })} />
+                      </label>
+                      <label style={{ display: "grid", gap: 6 }}>
+                        Gender
+                        <select value={patientForm.gender} onChange={(event) => setPatientForm({ ...patientForm, gender: event.target.value })}>
+                          <option value="">Select gender</option>
+                          <option value="Male">Male</option>
+                          <option value="Female">Female</option>
+                          <option value="Other">Other</option>
+                          <option value="Prefer not to say">Prefer not to say</option>
+                        </select>
+                      </label>
+                      <label style={{ display: "grid", gap: 6 }}>
+                        Phone
+                        <input type="tel" value={patientForm.phone} onChange={(event) => setPatientForm({ ...patientForm, phone: event.target.value })} maxLength={20} placeholder="Phone number" />
+                      </label>
+                      <label style={{ display: "grid", gap: 6 }}>
+                        Blood group
+                        <select value={patientForm.bloodGroup} onChange={(event) => setPatientForm({ ...patientForm, bloodGroup: event.target.value })}>
+                          <option value="">Select blood group</option>
+                          {["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map((group) => <option key={group} value={group}>{group}</option>)}
+                        </select>
+                      </label>
+                      <label style={{ display: "grid", gap: 6 }}>
+                        Address
+                        <input value={patientForm.address} onChange={(event) => setPatientForm({ ...patientForm, address: event.target.value })} maxLength={255} placeholder="Address (optional)" />
+                      </label>
+                      <div style={{ gridColumn: "1 / -1", display: "flex", gap: 10, flexWrap: "wrap" }}>
+                        <button className="primary-button" type="submit" disabled={patientSaving}>
+                          {patientSaving ? "Saving..." : "Save Patient"}
+                        </button>
+                        <button className="secondary-button" type="button" onClick={() => setShowPatientForm(false)} disabled={patientSaving}>Cancel</button>
+                      </div>
+                    </form>
+                  )}
+
+                  <div className="table-wrapper">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>ID</th>
+                          <th>Patient</th>
+                          <th>Gender</th>
+                          <th>Phone</th>
+                          <th>Blood Group</th>
                         </tr>
-                      ))}
-
-                      {!dataLoading && !dataError && patients.length === 0 && (
-                        <tr><td colSpan="5">No patient records found.</td></tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {dataLoading && <tr><td colSpan="5">Loading patients...</td></tr>}
+                        {!dataLoading && patients.map((patient) => (
+                          <tr key={patient.patientId}>
+                            <td>{patient.patientId}</td>
+                            <td><strong>{patient.name}</strong></td>
+                            <td>{patient.gender || "—"}</td>
+                            <td>{patient.phone || "—"}</td>
+                            <td>{patient.bloodGroup || "—"}</td>
+                          </tr>
+                        ))}
+                        {!dataLoading && !dataError && patients.length === 0 && <tr><td colSpan="5">No patient records found.</td></tr>}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
               )}
 
               {activePage === "Appointments" && (
