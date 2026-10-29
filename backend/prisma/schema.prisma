@@ -1,0 +1,156 @@
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Role {
+  roleId    Int      @id @default(autoincrement()) @map("role_id")
+  roleName  String   @unique @map("role_name") @db.VarChar(50)
+  users     User[]
+
+  @@map("roles")
+}
+
+model User {
+  userId       Int        @id @default(autoincrement()) @map("user_id")
+  fullName     String     @map("full_name") @db.VarChar(100)
+  email        String     @unique @db.VarChar(150)
+  passwordHash String     @map("password_hash") @db.VarChar(255)
+  roleId       Int        @map("role_id")
+  isActive     Boolean    @default(true) @map("is_active")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  role         Role       @relation(fields: [roleId], references: [roleId])
+  doctor       Doctor?
+  patient      Patient?
+  auditLogs    AuditLog[]
+
+  @@index([roleId])
+  @@map("users")
+}
+
+model Department {
+  deptId   Int      @id @default(autoincrement()) @map("dept_id")
+  deptName String   @unique @map("dept_name") @db.VarChar(100)
+  location String?  @db.VarChar(150)
+  doctors  Doctor[]
+
+  @@map("departments")
+}
+
+model Doctor {
+  doctorId         Int         @id @default(autoincrement()) @map("doctor_id")
+  userId           Int         @unique @map("user_id")
+  deptId           Int         @map("dept_id")
+  specialization   String      @db.VarChar(100)
+  licenseNo        String      @unique @map("license_no") @db.VarChar(100)
+  consultationFee  Decimal     @map("consultation_fee") @db.Decimal(10, 2)
+  user             User        @relation(fields: [userId], references: [userId])
+  department       Department  @relation(fields: [deptId], references: [deptId])
+  appointments     Appointment[]
+
+  @@index([deptId])
+  @@map("doctors")
+}
+
+model Patient {
+  patientId     Int           @id @default(autoincrement()) @map("patient_id")
+  userId        Int?           @unique @map("user_id")
+  name          String        @db.VarChar(100)
+  dob           DateTime?     @db.Date
+  gender        String?       @db.VarChar(30)
+  phone         String?       @db.VarChar(20)
+  bloodGroup    String?       @map("blood_group") @db.VarChar(5)
+  address       String?       @db.VarChar(255)
+  user          User?         @relation(fields: [userId], references: [userId])
+  appointments  Appointment[]
+
+  @@map("patients")
+}
+
+model Appointment {
+  appointmentId Int             @id @default(autoincrement()) @map("appointment_id")
+  patientId     Int             @map("patient_id")
+  doctorId      Int             @map("doctor_id")
+  apptDate      DateTime        @map("appt_date") @db.Date
+  apptTime      DateTime        @map("appt_time") @db.Time(0)
+  status        String          @default("SCHEDULED") @db.VarChar(30)
+  reason        String?         @db.VarChar(500)
+  patient       Patient         @relation(fields: [patientId], references: [patientId])
+  doctor        Doctor          @relation(fields: [doctorId], references: [doctorId])
+  medicalRecord MedicalRecord?
+  bill          Bill?
+
+  @@index([patientId])
+  @@index([doctorId, apptDate])
+  @@map("appointments")
+}
+
+model MedicalRecord {
+  recordId      Int            @id @default(autoincrement()) @map("record_id")
+  appointmentId Int            @unique @map("appointment_id")
+  diagnosis     String         @db.VarChar(500)
+  notes         String?
+  createdAt     DateTime       @default(now()) @map("created_at")
+  appointment   Appointment    @relation(fields: [appointmentId], references: [appointmentId])
+  prescriptions Prescription[]
+
+  @@map("medical_records")
+}
+
+model Medicine {
+  medicineId   Int            @id @default(autoincrement()) @map("medicine_id")
+  medicineName String         @map("medicine_name") @db.VarChar(150)
+  unitPrice    Decimal        @map("unit_price") @db.Decimal(10, 2)
+  stockQty     Int            @default(0) @map("stock_qty")
+  prescriptions Prescription[]
+
+  @@index([medicineName])
+  @@map("medicines")
+}
+
+model Prescription {
+  prescriptionId Int          @id @default(autoincrement()) @map("prescription_id")
+  recordId       Int          @map("record_id")
+  medicineId     Int          @map("medicine_id")
+  dosage         String       @db.VarChar(100)
+  durationDays   Int          @map("duration_days")
+  quantity       Int
+  record         MedicalRecord @relation(fields: [recordId], references: [recordId])
+  medicine       Medicine     @relation(fields: [medicineId], references: [medicineId])
+
+  @@index([recordId])
+  @@index([medicineId])
+  @@map("prescriptions")
+}
+
+model Bill {
+  billId          Int          @id @default(autoincrement()) @map("bill_id")
+  appointmentId   Int          @unique @map("appointment_id")
+  consultationAmt Decimal      @default(0) @map("consultation_amt") @db.Decimal(10, 2)
+  medicineAmt     Decimal      @default(0) @map("medicine_amt") @db.Decimal(10, 2)
+  totalAmt        Decimal      @default(0) @map("total_amt") @db.Decimal(10, 2)
+  paymentStatus   String       @default("PENDING") @map("payment_status") @db.VarChar(30)
+  paidOn          DateTime?    @map("paid_on")
+  appointment     Appointment  @relation(fields: [appointmentId], references: [appointmentId])
+
+  @@map("bills")
+}
+
+model AuditLog {
+  logId     Int       @id @default(autoincrement()) @map("log_id")
+  userId    Int?      @map("user_id")
+  action    String    @db.VarChar(100)
+  tableName String    @map("table_name") @db.VarChar(100)
+  recordId  Int?      @map("record_id")
+  loggedAt  DateTime  @default(now()) @map("logged_at")
+  user      User?     @relation(fields: [userId], references: [userId])
+
+  @@index([userId])
+  @@index([loggedAt])
+  @@map("audit_logs")
+}

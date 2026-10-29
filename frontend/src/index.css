@@ -1,0 +1,4 @@
+/* Global reset only. Theme tokens and components live in App.css. */
+html{scroll-behavior:smooth}
+body{margin:0}
+#root{width:100%;min-height:100svh}
